@@ -16,25 +16,15 @@ limitations under the License.
 #include <ATen/cuda/CUDAContext.h>
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
-#include <math.h>
-#include <torch/extension.h>
 
 #include <cassert>
 #include <cmath>
 
 // TODO: temp include for debug
-#include "utils.h"
-#include "vec_dtypes.cuh"  // #include <flashinfer/vec_dtypes.cuh>
-using namespace flashinfer;
+#include <flashinfer/vec_dtypes.cuh>
 
-// // TODO: debug only for now
-// #include "sgl_kernel_ops.h"
-// TORCH_LIBRARY_EXPAND(sgl_kernel, m) {
-//   m.def("silu_and_mul(Tensor! out, Tensor input) -> ()");
-//   m.impl("silu_and_mul", torch::kCUDA, &silu_and_mul);
-// }
-// # TODO: namespace
-// REGISTER_EXTENSION(common_ops)
+#include "utils.h"
+using namespace flashinfer;
 
 // TODO: hard code for now. reuse in some where
 // at::vec::convert_to_float instead later
@@ -204,7 +194,8 @@ __global__ void timestep_embedding_kernel(T* t_ptr, O* output_ptr, int B, int di
 
 // NOTE: output always be float32 now. According to python code:
 // timestep_embedding
-torch::Tensor timestep_embedding_kernel(torch::Tensor& t, torch::Tensor& output, int64_t dim, int64_t max_period) {
+torch::Tensor
+timestep_embedding_kernel(const torch::Tensor& t, torch::Tensor& output, int64_t dim, int64_t max_period) {
   TORCH_CHECK(t.dim() == 1 and t.stride(0) == 1, "t should be 1D");
   TORCH_CHECK(output.dim() == 2 and output.stride(1) == 1, "output should be a contiguous 2D tensor.");
 
@@ -261,8 +252,4 @@ torch::Tensor timestep_embedding_kernel(torch::Tensor& t, torch::Tensor& output,
   cudaError_t err = cudaGetLastError();
   TORCH_CHECK(err == cudaSuccess, "CUDA kernel launch failed: ", cudaGetErrorString(err));
   return output;
-}
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("timestep_embedding_kernel", &timestep_embedding_kernel, "timestep_embedding_kernel");
 }
