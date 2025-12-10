@@ -32,6 +32,7 @@ from sgl_kernel.elementwise import (
     gemma_rmsnorm,
     rmsnorm,
     silu_and_mul,
+    timestep_embedding,
 )
 from sgl_kernel.expert_specialization import es_fp8_blockwise_scaled_grouped_mm
 from sgl_kernel.fused_moe import fused_marlin_moe

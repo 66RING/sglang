@@ -935,3 +935,9 @@ void FMHACutlassSM100FwdRun(
 
 std::vector<at::Tensor>
 sparse_prefill_fwd(const at::Tensor& q, const at::Tensor& kv, const at::Tensor& indices, double sm_scale, int64_t d_v);
+
+/*
+ * From csrc/sgl_diffusion/elementwise
+ */
+torch::Tensor
+timestep_embedding_kernel(const torch::Tensor& input, torch::Tensor& output, int64_t dim, int64_t max_period);
