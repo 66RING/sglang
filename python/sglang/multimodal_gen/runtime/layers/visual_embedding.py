@@ -3,13 +3,35 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+import os
 
 import torch
 import torch.nn as nn
+from torch.utils.cpp_extension import load
 
 from sglang.multimodal_gen.runtime.layers.activation import get_act_fn
 from sglang.multimodal_gen.runtime.layers.linear import ReplicatedLinear
 from sglang.multimodal_gen.runtime.layers.mlp import MLP
+
+SRC_PATH = os.path.join(
+    "/home/ring/Documents/code/ml-sys/sglang_last/sgl-kernel/csrc/sgl_diffusion/elementwise/test.cu"
+)
+load(name="my_sglang_ops", sources=[SRC_PATH], verbose=True, is_python_module=False)
+
+
+def timestep_embedding_cuda(
+    t: torch.Tensor,
+    dim: int,
+    max_period: int = 10000,
+    dtype: torch.dtype = torch.float32,
+):
+    # TODO: review, output dtype always be float32. According to python code:
+    #  sglang/python/sglang/multimodal_gen/runtime/layers/visual_embedding.py
+    dtype = torch.float32
+
+    B = t.shape[0]
+    output = torch.empty((B, dim), dtype=dtype, device=t.device)
+    return torch.ops.my_sglang_ops.timestep_embedding(t, output, dim, max_period)
 
 
 class PatchEmbed(nn.Module):
