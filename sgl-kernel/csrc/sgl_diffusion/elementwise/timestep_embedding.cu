@@ -77,15 +77,20 @@ __device__ O cast_to(T x) {
 }
 
 template <typename T_IN>
-__global__ void timestep_embedding_kernel(T_IN* t_ptr, float* output_ptr, int dim, float neg_log_max_period) {
+__global__ void
+timestep_embedding_kernel(T_IN* t_ptr, float* output_ptr, int dim, float neg_log_max_period, int batch_size) {
   // Get the timestep for this batch
-  float t_val = cast_to<float>(__ldg(&t_ptr[blockIdx.x]));
-  float* output_batch_base_ptr = output_ptr + blockIdx.x * dim;
+  int row_idx = blockIdx.x * blockDim.y + threadIdx.y;
+  if (row_idx >= batch_size) {
+    return;
+  }
+  float t_val = cast_to<float>(__ldg(&t_ptr[row_idx]));
+  float* output_batch_base_ptr = output_ptr + row_idx * dim;
 
   // Calculate half dimension
   int half_dim = dim / 2;
   float half_dimf = __int2float_rn(half_dim);
-  int thread_offset = threadIdx.x;
+  int thread_offset = threadIdx.x % blockDim.x;
   while (thread_offset * 4 < half_dim) {
     float4* top_half = reinterpret_cast<float4*>(output_batch_base_ptr + thread_offset * 4);
     float4* bottom_half = reinterpret_cast<float4*>(output_batch_base_ptr + half_dim + thread_offset * 4);
@@ -133,11 +138,14 @@ torch::Tensor timestep_embedding(const torch::Tensor& t, torch::Tensor& output, 
   auto stream = at::cuda::getCurrentCUDAStream();
 
   constexpr int MAX_THREADS_PER_BLOCK = 1024;
+  constexpr int MIN_THREADS_PER_BLOCK = 128;
   int half_dim = dim / 2;
+  int num_threads_per_row = min(MAX_THREADS_PER_BLOCK, half_dim / 4);
+  int num_rows = (MIN_THREADS_PER_BLOCK + num_threads_per_row - 1) / num_threads_per_row;
 
-  dim3 grid(B, 1, 1);
+  dim3 grid((B + num_rows - 1) / num_rows, 1, 1);
   // assert float4 vectorize output
-  dim3 block(min(MAX_THREADS_PER_BLOCK, half_dim / 4), 1, 1);
+  dim3 block(num_threads_per_row, num_rows, 1);
   float neg_log_max_period = std::log(static_cast<float>(max_period)) * (-1.0f);
 
   if (t.dtype() == torch::kBFloat16) {
@@ -145,13 +153,22 @@ torch::Tensor timestep_embedding(const torch::Tensor& t, torch::Tensor& output, 
         reinterpret_cast<__nv_bfloat16*>(t.data_ptr()),
         reinterpret_cast<float*>(output.data_ptr()),
         dim,
-        neg_log_max_period);
+        neg_log_max_period,
+        B);
   } else if (t.dtype() == torch::kFloat16) {
     timestep_embedding_kernel<<<grid, block, 0, stream>>>(
-        reinterpret_cast<__half*>(t.data_ptr()), reinterpret_cast<float*>(output.data_ptr()), dim, neg_log_max_period);
+        reinterpret_cast<__half*>(t.data_ptr()),
+        reinterpret_cast<float*>(output.data_ptr()),
+        dim,
+        neg_log_max_period,
+        B);
   } else if (t.dtype() == torch::kFloat) {
     timestep_embedding_kernel<<<grid, block, 0, stream>>>(
-        reinterpret_cast<float*>(t.data_ptr()), reinterpret_cast<float*>(output.data_ptr()), dim, neg_log_max_period);
+        reinterpret_cast<float*>(t.data_ptr()),
+        reinterpret_cast<float*>(output.data_ptr()),
+        dim,
+        neg_log_max_period,
+        B);
   } else {
     TORCH_CHECK(false, "Unsupported dtype.");
   }
