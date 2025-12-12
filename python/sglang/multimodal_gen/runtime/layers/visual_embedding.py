@@ -27,7 +27,7 @@ torch.ops.load_library(
 )
 
 
-def timestep_embedding_cuda(
+def timestep_embedding(
     t: torch.Tensor,
     dim: int,
     flip_sin_to_cos: bool = False,
@@ -57,6 +57,9 @@ def timestep_embedding_cuda(
     return torch.ops.sgl_kernel.timestep_embedding(
         t, output, dim, flip_sin_to_cos, downscale_freq_shift, scale, max_period
     )
+
+
+timestep_embedding_cuda = timestep_embedding
 
 
 class PatchEmbed(nn.Module):
@@ -209,7 +212,7 @@ class TimestepEmbedder(nn.Module):
         return t_emb
 
 
-def timestep_embedding(
+def timestep_embedding_(
     t: torch.Tensor,
     dim: int,
     max_period: int = 10000,

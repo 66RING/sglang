@@ -19,10 +19,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from diffusers.models.attention import AttentionModuleMixin, FeedForward
-from diffusers.models.embeddings import (
-    CombinedTimestepGuidanceTextProjEmbeddings,
-    CombinedTimestepTextProjEmbeddings,
-)
 from diffusers.models.modeling_outputs import Transformer2DModelOutput
 from diffusers.models.normalization import (
     AdaLayerNormContinuous,
@@ -42,6 +38,10 @@ from sglang.multimodal_gen.runtime.layers.rotary_embedding import (
     NDRotaryEmbedding,
     _apply_rotary_emb,
 )
+from sglang.multimodal_gen.runtime.layers.visual_embedding import (
+    CombinedTimestepGuidanceTextProjEmbeddings,
+    CombinedTimestepTextProjEmbeddings,
+)
 from sglang.multimodal_gen.runtime.models.dits.base import CachableDiT
 from sglang.multimodal_gen.runtime.models.dits.utils import (
     delete_projection_layers,
@@ -52,6 +52,12 @@ from sglang.multimodal_gen.runtime.platforms import (
     current_platform,
 )
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
+
+# from diffusers.models.embeddings import (
+#     CombinedTimestepGuidanceTextProjEmbeddings,
+#     CombinedTimestepTextProjEmbeddings,
+# )
+
 
 logger = init_logger(__name__)  # pylint: disable=invalid-name
 
