@@ -14,11 +14,49 @@ from diffusers.models.embeddings import (
 )
 from diffusers.models.embeddings import PixArtAlphaTextProjection, TimestepEmbedding
 from diffusers.models.embeddings import Timesteps as _Timesteps
-from sgl_kernel.elementwise import timestep_embedding as timestep_embedding_cuda
 
 from sglang.multimodal_gen.runtime.layers.activation import get_act_fn
 from sglang.multimodal_gen.runtime.layers.linear import ReplicatedLinear
 from sglang.multimodal_gen.runtime.layers.mlp import MLP
+
+# from sgl_kernel.elementwise import timestep_embedding as timestep_embedding_cuda
+
+
+torch.ops.load_library(
+    "/home/ring/Documents/code/ml-sys/sglang_last/sgl-kernel/build/sm90/common_ops.abi3.so"
+)
+
+
+def timestep_embedding_cuda(
+    t: torch.Tensor,
+    dim: int,
+    flip_sin_to_cos: bool = False,
+    downscale_freq_shift: float = 0.0,
+    scale: float = 1,
+    max_period: int = 10000,
+    dtype: torch.dtype = torch.float32,
+):
+    """
+    Create sinusoidal timestep embeddings.
+
+    # TODO: review, output dtype always be float32. According to python code:
+    #  sglang/python/sglang/multimodal_gen/runtime/layers/visual_embedding.py
+
+    Args:
+        t: Tensor of shape [B] with timesteps
+        dim: Embedding dimension
+        max_period: Controls the minimum frequency of the embeddings
+
+    Returns:
+        Tensor of shape [B, dim] with embeddings
+    """
+    dtype = torch.float32
+
+    batch_size = t.shape[0]
+    output = torch.empty((batch_size, dim), dtype=dtype, device=t.device)
+    return torch.ops.sgl_kernel.timestep_embedding(
+        t, output, dim, flip_sin_to_cos, downscale_freq_shift, scale, max_period
+    )
 
 
 class PatchEmbed(nn.Module):

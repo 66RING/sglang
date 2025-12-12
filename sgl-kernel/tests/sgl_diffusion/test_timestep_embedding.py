@@ -3,9 +3,13 @@ import pytest
 import tabulate
 import torch
 from diffusers.models.embeddings import get_timestep_embedding
-from sgl_kernel.elementwise import timestep_embedding as timestep_embedding_cuda
 
-from sglang.multimodal_gen.runtime.layers.visual_embedding import timestep_embedding
+from sglang.multimodal_gen.runtime.layers.visual_embedding import (
+    timestep_embedding,
+    timestep_embedding_cuda,
+)
+
+# from sgl_kernel.elementwise import timestep_embedding as timestep_embedding_cuda
 
 
 @pytest.mark.parametrize(
